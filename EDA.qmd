@@ -9,13 +9,17 @@ editor: visual
 
 ```{r, message= FALSE}
 library(readr)
+library(dplyr)
+library(tidyr)
+library(tidyverse)
+library(ggplot2)
 ```
 
 ## Introduction Section
 
 This data is the results from a yearly survey done by the CDC regarding general health. This survey from 2015 had 253,680 responses where respondents gave answers to different health-related questions. These answers are used by the CDC to help track health objectives as well as better implement disease prevention. [CDC Site](https://www.cdc.gov/brfss/about/brfss_faq.htm)
 
-The variables we are working with in this file are going to be used to look at diabetes indicators. Since this was a survey, few. This analysis will focus on 4 predictor variables specifically that I think would create an accurate predictive model for Diabetes. The variables I have chosen to look into more in depth are Smoker, Age, GenHlth, and BMI. I thought smoker would be interesting here because we know that smoking negatively affects basically everything. It causes cancer in many forms, increases heart disease and attack risk, damages cells, and that's not even half of them. Therefore, looking at Smoker here makes sense to me as a possible indicator for Diabetes. I chose Age because generally, younger people are less at risk for Diabetes. However, I want to see if someone younger is more at risk if they smoke, or if their BMI is higher than someone older. The GenHlth variable is a scale of 1-5 (1 being excellent) on how healthy in general the respondent thinks they are. I chose this variable because I think generally people think they are healthier than they actually are. So, looking at this variable could show that people who answered this question with a good score could actually have a higher risk based on other factors. Lastly, I chose BMI because generally diabetes is associated with people who are overweight. BMI is a measure of this, so I wanted to see if there was a spike at a certain BMI, or if there is a dependance on BMI with the other variables. [Risk Factors according to CDC](https://www.cdc.gov/diabetes/risk-factors/?CDC_AAref_Val=https://www.cdc.gov/diabetes/basics/risk-factors.html)
+The variables we are working with in this file are going to be used to look at diabetes indicators. Since this was a survey, few. This analysis will focus on 4 predictor variables specifically that I think would create an accurate predictive model for Diabetes. The variables I have chosen to look into more in depth are Smoker, GenHlth, and BMI. I thought smoker would be interesting here because we know that smoking negatively affects basically everything. It causes cancer in many forms, increases heart disease and attack risk, damages cells, and that's not even half of them. Therefore, looking at Smoker here makes sense to me as a possible indicator for Diabetes. The GenHlth variable is a scale of 1-5 (1 being excellent) on how healthy in general the respondent thinks they are. I chose this variable because I think generally people think they are healthier than they actually are. So, looking at this variable could show that people who answered this question with a good score could actually have a higher risk based on other factors. Lastly, I chose BMI because generally diabetes is associated with people who are overweight. BMI is a measure of this, so I wanted to see if there was a spike at a certain BMI, or if there is a dependence on BMI with the other variables. [Risk Factors according to CDC](https://www.cdc.gov/diabetes/risk-factors/?CDC_AAref_Val=https://www.cdc.gov/diabetes/basics/risk-factors.html)
 
 The purpose of the EDA done in this file is to get to know the dataset used as well as the variables chosen. We will look at different summaries of the data visually with tables and charts, to look at the distribution of each variable.
 
@@ -23,9 +27,65 @@ The ultimate goal of modeling in this context is to take existing data in order 
 
 ## Data
 
-```{r}
-diabetes_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv")
+```{r, message=FALSE}
+diabetes_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |> select(Diabetes_binary, BMI, Smoker, GenHlth) |> drop_na() |> mutate(Diabetes = factor(if_else(Diabetes_binary == 0, "no", "yes")), Smoking_status = factor(if_else(Smoker == 0, "no", "yes")), Health_level = case_when(
+  GenHlth == "1" ~ "excellent",
+  GenHlth == "2" ~ "verygood",
+  GenHlth == "3" ~ "good",
+  GenHlth == "4" ~ "fair",
+  GenHlth == "5" ~ "poor",
+  .default = "NA"
+)) |> mutate(Health_level = factor(Health_level, levels = c("excellent", "verygood", "good", "fair", "poor"),ordered = TRUE))
 View(diabetes_data)
 ```
 
-Do link here: [Click here for the Modeling Page](Modeling.html)
+## Summarizations
+We should start by looking to see how each variable distributes with/without the presence of Diabetes
+```{r}
+diabetes_data |> group_by(Diabetes, Smoking_status) |> summarize(count = n(), .groups = "drop")
+```
+Based on this table, we can see that
+nonsmoker/no diabetes = 124228 / (124228 + 94106) = 56.9%
+
+smoker/no diabetes = 94106 / (124228 + 94106) = 43.1%
+
+nonsmoker/diabetes = 17029	/ (17029	+ 18317) = 48.2%
+
+smoker/diabetes = 18317	/ (17029	+ 18317) = 51.8%
+
+Therefore, it does not look like, based on this table, smoking has a drastic effect on whether or not someone may have diabetes
+
+```{r}
+diabetes_data |>
+  group_by(Diabetes) |>
+  summarize(mean_BMI = mean(BMI), .groups = "drop")
+```
+Looking at the mean here, we do see that BMI for those with Diabetes is 4 points higher than those without. Obesity is considered to be a BMI of 30 or higher, which could point to why this is the case.
+
+Plot of Health Level vs Diabetes
+```{r}
+ggplot(data = diabetes_data, aes(x = Health_level, fill = Diabetes)) + geom_bar() + labs(y = "Cases")
+```
+There are a handful of people who gave themselves an excellent health score who also have diabetes. Not all people who have Diabetes are unhealthy, but an interesting spread nonetheless.
+
+Plot of BMI by Diabetes
+```{r}
+ggplot(diabetes_data, aes(x = BMI, fill = Diabetes)) + geom_histogram(binwidth = 1)
+```
+There seems to be a normal curve for both no diabetes as well as those with diabetes. It looks like the Diabetes curve peaks at a higher BMI than no Diabetes
+
+Now, we should also look to see how the variables relate to each other.
+```{r}
+diabetes_data |>
+  group_by(Health_level) |>
+  summarize(mean_BMI = mean(BMI), .groups = "drop") |> arrange(mean_BMI)
+```
+Unsurprisingly, BMI gets larger as Health_Level decreases. Though poor and fair have switched in order, they are extremely similar
+
+```{r}
+ggplot(data = diabetes_data, aes(x = Health_level, fill = Smoking_status)) + geom_bar() + labs(y = "Cases")
+```
+
+Interestingly, more people that gave themselves an excellent health rating smoke than those who gave themselves a poor rating
+
+[Click here for the Modeling Page](Modeling.html)
