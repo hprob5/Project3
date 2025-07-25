@@ -7,12 +7,8 @@ editor: visual
 
 ## Libraries
 
-```{r, message= FALSE}
-library(readr)
-library(dplyr)
-library(tidyr)
-library(tidyverse)
-library(ggplot2)
+```{r, include= FALSE}
+lapply(c("readr", "dplyr", "tidyverse", "ggplot2", "tidyr"), library, character.only = TRUE)
 ```
 
 ## Introduction Section
@@ -36,7 +32,6 @@ diabetes_data <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |> 
   GenHlth == "5" ~ "poor",
   .default = "NA"
 )) |> mutate(Health_level = factor(Health_level, levels = c("excellent", "verygood", "good", "fair", "poor"),ordered = TRUE))
-View(diabetes_data)
 ```
 
 ## Summarizations

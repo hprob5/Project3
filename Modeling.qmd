@@ -1,0 +1,99 @@
+---
+title: "Modeling"
+author: "Holly Probasco"
+format: html
+editor: visual
+---
+
+```{r, include=FALSE}
+lapply(c("tidymodels", "caret"), library, character.only = TRUE)
+```
+
+## Introduction
+This modeling file will attempt to look at the different variables in the Diabetes dataset and find the best combination of these variables for a predictive model. We will use 3 different modeling methods: Logistic Regression, Clsssification Tree, and Random Forest. Then, after finding the best model for each type, we will compare those to find the best performing model overall.
+
+The ultimate goal of modeling in this context is to take existing data in order to predict which factors may result in diabetes for people. In this way, we aim to prevent other people with similar traits from getting the disease. Through this process of model selection, we can get one step closer to a goal like this.
+
+## Dataset
+```{r, message=FALSE}
+diabetes_data_LR <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |> drop_na() |> mutate(BP_lvl = factor(if_else(HighBP == 0, "no", "high")), Chol_lvl = factor(if_else(HighChol == 0, "no", "high")), Stroke = factor(if_else(Stroke == 0, "no", "yes")), Sex = factor(if_else(Sex == 0, "F", "M")), Diabetes = factor(if_else(Diabetes_binary == 0, "no", "yes")), Smoking_status = factor(if_else(Smoker == 0, "no", "yes")), Health_level = case_when(
+  GenHlth == "1" ~ "excellent",
+  GenHlth == "2" ~ "verygood",
+  GenHlth == "3" ~ "good",
+  GenHlth == "4" ~ "fair",
+  GenHlth == "5" ~ "poor",
+  .default = "NA"
+)) |> mutate(Health_level = factor(Health_level, levels = c("excellent", "verygood", "good", "fair", "poor"),ordered = TRUE))
+```
+
+
+## Splitting the data
+```{r}
+split_data <- initial_split(diabetes_data_LR, prop = .7)
+train <- training(split_data)
+test <- testing(split_data)
+```
+
+
+## Logistic Regression Models
+Logistic regression is a type of model that we use to see if there is a relationship between some predictor variables (x) and a response variable (y). The response variable is binary (like a success/failure), and here we are predicting whether or not someone has Diabetes. We model the probability of success. This is done using a sigmoid curve, which maps all numbers to a value between 0 and 1. Since the curve is then not strictly linear, our slopes model a change in the log-odds of success, rather than just the probability. This way, we do not have to be stuck using a Linear Regression on data that is not continuous!
+
+## Fitting 3 canditate models
+```{r}
+# Recipes setup
+
+# EDA choices of interest
+LR1_rec <- recipe(Diabetes ~ Smoking_status + Health_level + BMI, data = train) |>
+step_normalize(BMI) |> step_dummy(Smoking_status, Health_level)
+
+# Health History choices
+LR2_rec <- recipe(Diabetes ~ BP_lvl + Health_level + Chol_lvl + Stroke, data = train) |> step_dummy(BP_lvl, Health_level,Chol_lvl, Stroke)
+
+# My personal guess at optimal choices
+LR3_rec <- recipe(Diabetes ~ Sex + Chol_lvl + BMI + BP_lvl, data = train) |> step_normalize(BMI) |> step_dummy(BP_lvl, Sex ,Chol_lvl)
+```
+
+
+```{r}
+#set up engine for the logistic regression
+LR_spec <- logistic_reg() |>
+set_engine("glm")
+
+# workflow setup
+LR1_wkf <- workflow() |> add_recipe(LR1_rec) |>
+add_model(LR_spec)
+
+LR2_wkf <- workflow() |> add_recipe(LR2_rec) |>
+add_model(LR_spec)
+
+LR3_wkf <- workflow() |> add_recipe(LR3_rec) |>
+add_model(LR_spec)
+```
+
+
+```{r}
+# create CV folds 
+diab_folds <- vfold_cv(train, 5)
+
+# use CV folds on workflows
+LR1_fit <- LR1_wkf |> fit_resamples(diab_folds, metrics = metric_set(mn_log_loss))
+
+LR2_fit <- LR2_wkf |> fit_resamples(diab_folds, metrics = metric_set(mn_log_loss))
+
+LR3_fit <- LR3_wkf |> fit_resamples(diab_folds, metrics = metric_set(mn_log_loss))
+```
+
+
+```{r}
+# now we collect the metric we used for each model and compare
+best_fits <- rbind(LR1_fit |> collect_metrics(),
+LR2_fit |> collect_metrics(),
+LR3_fit |> collect_metrics()) |>
+mutate(Model = c("Model1", "Model2", "Model3")) |>
+select(Model, everything())
+best_fits
+```
+Very similar mean and sd across the 3 models, but it looks like the 2nd model was the best performing as it has the lowest log loss.
+
+
+
