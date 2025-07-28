@@ -1,7 +1,8 @@
 ---
 title: "EDA"
 author: "Holly Probasco"
-format: pdf
+format: html
+output: html_document
 editor: visual
 ---
 
