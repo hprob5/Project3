@@ -215,3 +215,14 @@ rf_final_model <- extract_fit_engine(rf_full_fit)
 rf_final_model$variable.importance |> sort()
 ```
 Based on this output, it looks like our 3 predictors used are Health Level, BP_lvl, and BMI
+
+Lastly, we must save this model so it can be referenced later in the API.
+Fitting model to entore data set
+```{r}
+final_model <- rf_final_wkf |> fit(diabetes_data_LR)
+```
+
+```{r}
+saveRDS(final_model, "final_model.rds")
+```
+
