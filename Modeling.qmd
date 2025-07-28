@@ -8,7 +8,7 @@ editor: visual
 ```{r, results='hide'}
 #| warning: FALSE
 #| message: FALSE
-lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger"), library, character.only = TRUE)
+lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger","plumber"), library, character.only = TRUE)
 ```
 
 ## Introduction
@@ -158,7 +158,7 @@ We use random forest models because they are less likely to overfit the data tha
 
 Set up random forest model
 ```{r}
-rf_spec <- rand_forest(mtry = tune()) |>
+rf_spec <- rand_forest(mtry = tune(), trees = 20) |>
 set_engine("ranger") |>
 set_mode("classification")
 
@@ -167,16 +167,11 @@ rf_wkf <- workflow() |>
 add_recipe(diab_class) |>
 add_model(rf_spec)
 
-diab_gridrf <- grid_regular(mtry,
-                 levels = 5)
-
 #using CV for tuned values
-rf_fit <- rf_wkf |>
-tune_grid(resamples = diab_folds,
-grid = diab_gridrf ,
-metrics = metric_set(mn_log_loss))
+rf_fit <- rf_wkf |> 
+  tune_grid(resamples = diab_folds, metrics = metric_set(mn_log_loss))
 
-#Looking at all metrics among the trees
+# Looking at all metrics among the trees
 rf_fit |> collect_metrics() |>
 filter(.metric == "mn_log_loss") |> arrange(mean)
 ```
@@ -189,7 +184,7 @@ rf_best_param
 #finalize the workflow which uses the best metric on the model we have
 rf_final_wkf <- rf_wkf |> finalize_workflow(rf_best_param)
 ```
-
+It looks like Model 4, which sampled from 3 predictors 
 ## Final Model Selection
 Here, we will be determining which of the 3 types of models is the best performing on the test data set overall. We will do this by taking the best model found from each, and comparing them to each other using log loss
 ```{r}
@@ -209,6 +204,5 @@ last_fit(split_data, metrics = metric_set(mn_log_loss)) |>
   collect_metrics()
 rf_final_fit
 ```
-
-
+So, based on the values of our log loss metric, the Random Forest model was the best performing of the three. 
 
