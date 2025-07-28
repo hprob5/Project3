@@ -158,8 +158,8 @@ We use random forest models because they are less likely to overfit the data tha
 
 Set up random forest model
 ```{r}
-rf_spec <- rand_forest(mtry = tune(), trees = 20) |>
-set_engine("ranger") |>
+rf_spec <- rand_forest(mtry = tune(), trees = 100) |>
+set_engine("ranger", importance = "impurity") |>
 set_mode("classification")
 
 # create workflow, using same recipe as the Classification Tree
@@ -185,6 +185,7 @@ rf_best_param
 rf_final_wkf <- rf_wkf |> finalize_workflow(rf_best_param)
 ```
 It looks like Model 4, which sampled from 3 predictors 
+
 ## Final Model Selection
 Here, we will be determining which of the 3 types of models is the best performing on the test data set overall. We will do this by taking the best model found from each, and comparing them to each other using log loss
 ```{r}
@@ -206,3 +207,10 @@ rf_final_fit
 ```
 So, based on the values of our log loss metric, the Random Forest model was the best performing of the three. 
 
+lastly we can extract which variables were used and which were most important
+```{r}
+rf_full_fit <- rf_final_wkf |> fit(train)
+rf_final_model <- extract_fit_engine(rf_full_fit)
+rf_final_model$variable.importance |> sort()
+```
+Based on this output, it looks like our 3 predictors used are Health Level, BP_lvl, and BMI
