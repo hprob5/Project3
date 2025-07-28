@@ -8,7 +8,7 @@ editor: visual
 ```{r, results='hide'}
 #| warning: FALSE
 #| message: FALSE
-lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger","plumber"), library, character.only = TRUE)
+lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger"), library, character.only = TRUE)
 ```
 
 ## Introduction
