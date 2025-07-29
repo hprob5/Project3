@@ -15,7 +15,7 @@ lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger"), library, char
 
 ## Introduction
 
-This modeling file will attempt to look at the different variables in the Diabetes dataset and find the best combination of these variables for a predictive model. We will use 3 different modeling methods: Logistic Regression, Clsssification Tree, and Random Forest. Then, after finding the best model for each type, we will compare those to find the best performing model overall.
+This modeling file will attempt to look at the different variables in the Diabetes dataset and find the best combination of these variables for a predictive model. We will use 3 different modeling methods: Logistic Regression, Classification Tree, and Random Forest. Then, after finding the best model for each type, we will compare those to find the best performing model overall.
 
 The ultimate goal of modeling in this context is to take existing data in order to predict which factors may result in diabetes for people. In this way, we aim to prevent other people with similar traits from getting the disease. Through this process of model selection, we can get one step closer to a goal like this.
 
@@ -171,7 +171,7 @@ We use random forest models because they are less likely to overfit the data tha
 Set up random forest model
 
 ```{r}
-rf_spec <- rand_forest(mtry = tune(), trees = 100) |>
+rf_spec <- rand_forest(mtry = tune(), trees = 10) |>
 set_engine("ranger", importance = "impurity") |>
 set_mode("classification")
 
@@ -234,7 +234,7 @@ rf_final_model$variable.importance |> sort()
 
 Based on this output, it looks like our most valuable 3 predictors are Health Level, BP_lvl, and BMI
 
-Lastly, we must save this model so it can be referenced later in the API. Fitting model to entore data set
+Lastly, we must save this model so it can be referenced later in the API. Fitting model to entire data set
 
 ```{r}
 final_model <- rf_final_wkf |> fit(diabetes_data_LR)
