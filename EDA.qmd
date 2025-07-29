@@ -3,6 +3,7 @@ title: "EDA"
 author: "Holly Probasco"
 format: html
 output: html_document
+output-dir: docs
 editor: visual
 ---
 
