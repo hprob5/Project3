@@ -13,11 +13,13 @@ lapply(c("readr","tidymodels", "caret", "tree", "rpart","ranger"), library, char
 ```
 
 ## Introduction
+
 This modeling file will attempt to look at the different variables in the Diabetes dataset and find the best combination of these variables for a predictive model. We will use 3 different modeling methods: Logistic Regression, Clsssification Tree, and Random Forest. Then, after finding the best model for each type, we will compare those to find the best performing model overall.
 
 The ultimate goal of modeling in this context is to take existing data in order to predict which factors may result in diabetes for people. In this way, we aim to prevent other people with similar traits from getting the disease. Through this process of model selection, we can get one step closer to a goal like this.
 
 ## Dataset
+
 ```{r, message=FALSE}
 diabetes_data_LR <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") |> drop_na() |> mutate(BP_lvl = factor(if_else(HighBP == 0, "no", "high")), Chol_lvl = factor(if_else(HighChol == 0, "no", "high")), HeartDA = factor(if_else(HeartDiseaseorAttack == 0, "no", "yes")), Sex = factor(if_else(Sex == 0, "F", "M")), Diabetes = factor(if_else(Diabetes_binary == 0, "no", "yes")), Smoking_status = factor(if_else(Smoker == 0, "no", "yes")), Health_level = case_when(
   GenHlth == "1" ~ "excellent",
@@ -28,24 +30,27 @@ diabetes_data_LR <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") 
   .default = "NA"
 )) |> mutate(Health_level = factor(Health_level, levels = c("excellent", "verygood", "good", "fair", "poor"),ordered = TRUE)) |> select(Diabetes, BMI, BP_lvl, Chol_lvl, HeartDA, Sex, Smoking_status, Health_level)
 ```
+
 Save this to reference later:
+
 ```{r}
 saveRDS(diabetes_data_LR, "diabetes_data.rds")
 ```
 
-
 ## Splitting the data
+
 ```{r}
 split_data <- initial_split(diabetes_data_LR, prop = .7)
 train <- training(split_data)
 test <- testing(split_data)
 ```
 
-
 ## Logistic Regression Models
+
 Logistic regression is a type of model that we use to see if there is a relationship between some predictor variables (x) and a response variable (y). The response variable is binary (like a success/failure), and here we are predicting whether or not someone has Diabetes. We model the probability of success. This is done using a sigmoid curve, which maps all numbers to a value between 0 and 1. Since the curve is then not strictly linear, our slopes model a change in the log-odds of success, rather than just the probability. This way, we do not have to be stuck using a Linear Regression on data that is not continuous!
 
 Fitting 3 candidate models
+
 ```{r}
 # Recipes setup
 
@@ -59,7 +64,6 @@ LR2_rec <- recipe(Diabetes ~ BP_lvl + Health_level + Chol_lvl + HeartDA, data = 
 # My personal guess at optimal choices
 LR3_rec <- recipe(Diabetes ~ HeartDA + Chol_lvl + BMI + BP_lvl, data = train) |> step_normalize(BMI) |> step_dummy(BP_lvl, HeartDA ,Chol_lvl)
 ```
-
 
 ```{r}
 #set up engine for the logistic regression
@@ -77,7 +81,6 @@ LR3_wkf <- workflow() |> add_recipe(LR3_rec) |>
 add_model(LR_spec)
 ```
 
-
 ```{r}
 # create CV folds 
 diab_folds <- vfold_cv(train, 5)
@@ -90,7 +93,6 @@ LR2_fit <- LR2_wkf |> fit_resamples(diab_folds, metrics = metric_set( mn_log_los
 LR3_fit <- LR3_wkf |> fit_resamples(diab_folds, metrics = metric_set(mn_log_loss))
 ```
 
-
 ```{r}
 # now we collect the metric we used for each model and compare
 best_fits <- rbind(LR1_fit |> collect_metrics(),
@@ -100,15 +102,17 @@ mutate(Model = c("Model1","Model2","Model3")) |>
 select(Model, everything())
 best_fits
 ```
+
 Very similar mean and SE across the 3 models, but it looks like the 2nd model was the best performing as it has the lowest mean log loss.
 
-
 ## Classification Tree
+
 A classification tree model is fit differently than a regression model, in that it uses recursive binary splitting. The goal is to find the optimal cross-entropy for each value of predictor, and split there. Cross-entropy deals with looking at how a split occurs, and measures how "pure" split is. This just means how many of one class ended up in the split where the rest of its same class also is. A pure node contains mostly or the entirety of one class. Then nodes are created, and the process continues on each iterative branch. Then, after all the iterative nodes have been created, sometimes pruning is required so that we don't overfit the data. That is, too many nodes is not always ideal, so we can remove some through pruning. We can also choose how many nodes we want to have using Cross Validation.
 
 We use Classification trees here because the response is categorical, with both numeric and categorical predictors. Also, the built in variable selection is helpful here where we have many variables that could be good predictors, but we want to find the best ones. There are no assumptions like normality/linearity needed, and we don't have to scale the variables like we would for a logistic regression model. They also have a visual element to them that makes the line of thought while model selecting easy to follow.
 
 Set up recipe
+
 ```{r}
 diab_class <- recipe(Diabetes ~ ., data = train) |>
   step_dummy(all_factor(), -all_outcomes()) |>
@@ -117,6 +121,7 @@ diab_class
 ```
 
 Set up classification tree model
+
 ```{r}
 #we use tune here so that we are about to find the optimal depth and cost complexity through cross validation
 diab_mod <- decision_tree(tree_depth = tune(),
@@ -145,7 +150,6 @@ fits |> collect_metrics() |>
   arrange(mean)
 ```
 
-
 ```{r}
 # Now we can extract the best performing of the models
 best_param <- select_best(fits, metric = "mn_log_loss")
@@ -154,14 +158,17 @@ best_param
 #finalize the workflow which uses the best metric on the model we have
 final_wkf <- diab_wkf |> finalize_workflow(best_param)
 ```
-Looks like Model 31 gave the best performing model for the classification tree method. 
+
+Looks like Model 31 gave the best performing model for the classification tree method.
 
 ## Random Forest
-A random forest model uses bootstrapping to create multiple trees from one sample. Each tree is created from a bootstrapped sample taken from the training dataset, done with replacement. The final prediction at the end takes all the trees and averages their results together. This model does not use every predictor at each split of each tree, it considers the splits using a random subset of the predictors each time. This creates a "random forest" of decision trees, that are not highly correlated. 
+
+A random forest model uses bootstrapping to create multiple trees from one sample. Each tree is created from a bootstrapped sample taken from the training dataset, done with replacement. The final prediction at the end takes all the trees and averages their results together. This model does not use every predictor at each split of each tree, it considers the splits using a random subset of the predictors each time. This creates a "random forest" of decision trees, that are not highly correlated.
 
 We use random forest models because they are less likely to overfit the data than the regular classification tree method. Additionally, they also have their own built in variable selection, which is helpful when it comes to model selection. It is a robust method of model fitting, due to its choosing different predictors for each tree, and each tree is trained on a different bootstrapped subset.
 
 Set up random forest model
+
 ```{r}
 rf_spec <- rand_forest(mtry = tune(), trees = 100) |>
 set_engine("ranger", importance = "impurity") |>
@@ -189,10 +196,13 @@ rf_best_param
 #finalize the workflow which uses the best metric on the model we have
 rf_final_wkf <- rf_wkf |> finalize_workflow(rf_best_param)
 ```
-It looks like Model 4, which sampled from 3 predictors 
+
+It looks like Model 4, which sampled from 3 predictors
 
 ## Final Model Selection
+
 Here, we will be determining which of the 3 types of models is the best performing on the test data set overall. We will do this by taking the best model found from each, and comparing them to each other using log loss
+
 ```{r}
 #Logistic Regression
 LR2_wkf |> last_fit(split_data, 
@@ -210,18 +220,21 @@ last_fit(split_data, metrics = metric_set(mn_log_loss)) |>
   collect_metrics()
 rf_final_fit
 ```
-So, based on the values of our log loss metric, the Random Forest model was the best performing of the three. 
+
+So, based on the values of our log loss metric, the Random Forest model was the best performing of the three.
 
 lastly we can extract which variables were used and which were most important
+
 ```{r}
 rf_full_fit <- rf_final_wkf |> fit(train)
 rf_final_model <- extract_fit_engine(rf_full_fit)
 rf_final_model$variable.importance |> sort()
 ```
-Based on this output, it looks like our 3 predictors used are Health Level, BP_lvl, and BMI
 
-Lastly, we must save this model so it can be referenced later in the API.
-Fitting model to entore data set
+Based on this output, it looks like our most valuable 3 predictors are Health Level, BP_lvl, and BMI
+
+Lastly, we must save this model so it can be referenced later in the API. Fitting model to entore data set
+
 ```{r}
 final_model <- rf_final_wkf |> fit(diabetes_data_LR)
 ```
@@ -229,4 +242,3 @@ final_model <- rf_final_wkf |> fit(diabetes_data_LR)
 ```{r}
 saveRDS(final_model, "final_model.rds")
 ```
-
