@@ -3,6 +3,8 @@
 #
 
 library(plumber)
+library(tidymodels)
+library(ranger)
 
 # our best model fit to the entire dataset
 final_model_api <- readRDS("final_model.rds")

@@ -141,4 +141,4 @@ scale_y_continuous(labels = scales::label_comma())
 
 Interestingly, more people that gave themselves an excellent health rating smoke than those who gave themselves a poor rating
 
-[Click here for the Modeling Page](Modeling.qmd)
+[Click here for the Modeling Page](Modeling.html)

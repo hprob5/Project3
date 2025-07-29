@@ -4,7 +4,7 @@ FROM rstudio/plumber
 RUN apt-get update -qq && apt-get install -y libssl-dev libcurl4-gnutls-dev libpng-dev libpng-dev pandoc
 
 # Required R packages
-RUN R -e "install.packages(c('plumber', 'stats'))"
+RUN R -e "install.packages(c('plumber', 'stats', 'tidymodels', 'ranger'))"
 
 # copying files from directory to the dockerfile
 COPY API.R API.R
