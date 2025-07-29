@@ -11,3 +11,4 @@ website:
       - text: "Modeling"
         file: Modeling.qmd
   index-page: EDA.qmd
+  page-navigation: true
