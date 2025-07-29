@@ -1,3 +1,13 @@
 project:
   type: website
   output-dir: docs
+
+website:
+  title: "My Project 3"
+  navbar:
+    left:
+      - text: "EDA"
+        file: EDA.qmd
+      - text: "Modeling"
+        file: Modeling.qmd
+  index-page: EDA.qmd

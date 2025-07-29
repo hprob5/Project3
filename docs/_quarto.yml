@@ -10,3 +10,4 @@ website:
         file: EDA.qmd
       - text: "Modeling"
         file: Modeling.qmd
+  index-page: EDA.qmd
