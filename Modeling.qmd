@@ -28,6 +28,10 @@ diabetes_data_LR <- read_csv("diabetes_binary_health_indicators_BRFSS2015.csv") 
   .default = "NA"
 )) |> mutate(Health_level = factor(Health_level, levels = c("excellent", "verygood", "good", "fair", "poor"),ordered = TRUE)) |> select(Diabetes, BMI, BP_lvl, Chol_lvl, HeartDA, Sex, Smoking_status, Health_level)
 ```
+Save this to reference later:
+```{r}
+saveRDS(diabetes_data_LR, "diabetes_data.rds")
+```
 
 
 ## Splitting the data
